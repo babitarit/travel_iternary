@@ -1,10 +1,27 @@
+import configparser
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from fpdf import FPDF
 import google.generativeai as genai
 
+# Load secrets from secret.properties
+config = configparser.ConfigParser()
+
+try:
+    config.read('D:/Projects/MarchCohort/githubClone/travel_iternary/secret.properties')
+    API_KEY = config.get('DEFAULT', 'API_KEY')  # Fetch API key
+    SECRET_KEY = config.get('DEFAULT', 'SECRET_KEY')  # Fetch secret key
+except (configparser.NoOptionError, configparser.NoSectionError) as e:
+    print(f"Error reading configuration: {e}")
+    exit(1)  # Exit if configuration is missing or incorrect
+
 app = Flask(__name__)
+app.config['SECRET_KEY'] = SECRET_KEY  # Use the loaded secret key for Flask sessions
+
 CORS(app)  # Enable CORS for cross-origin requests
+
+# Rest of your Flask app code...
+
 
 class PDF(FPDF):
     def header(self):
@@ -23,8 +40,7 @@ class PDF(FPDF):
         self.multi_cell(0, 10, content)
 
 def generate_itinerary(source, destination, duration, budget, preferences):
-    api_key = "AIzaSyAmMmxHawteGfVq9QlRn8i3GvuOpcV1_hQ"  # Replace with your actual API key
-    genai.configure(api_key=api_key)
+    genai.configure(api_key=API_KEY)  # Use the loaded API key
 
     model = genai.GenerativeModel("gemini-2.0-flash")
     prompt = f"""Create a detailed {duration}-day travel itinerary from {source} to {destination} 
