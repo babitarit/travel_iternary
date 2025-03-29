@@ -61,11 +61,27 @@ def generate_itinerary(source, destination, duration, budget, preferences):
         return None
 
 def save_to_pdf(itinerary_text):
+    # Replace unsupported Unicode characters with ASCII equivalents
+    replacements = {
+        "₹": "Rs.",  # Replace rupee symbol
+        "–": "-",    # Replace en dash with a hyphen
+        "—": "-",    # Replace em dash with a hyphen
+        "“": '"',    # Replace left double quote with a standard quote
+        "”": '"',    # Replace right double quote with a standard quote
+        "‘": "'",    # Replace left single quote with a standard quote
+        "’": "'",    # Replace right single quote with a standard quote
+    }
+
+    for unicode_char, ascii_char in replacements.items():
+        itinerary_text = itinerary_text.replace(unicode_char, ascii_char)
+
     pdf = PDF()
     pdf.add_page()
 
+    # Use default Arial font for output
     pdf.set_font("Arial", size=12)
 
+    # Split text into days for formatting (assuming AI response is structured with "Day X" headings)
     days = itinerary_text.split("Day ")
     
     for i, day_content in enumerate(days[1:], start=1):  # Skip first split part before "Day X"
@@ -75,6 +91,8 @@ def save_to_pdf(itinerary_text):
     pdf.output(pdf_file_path)
     
     return pdf_file_path
+
+
 
 last_itinerary = {"text": None, "pdf_path": None}
 
@@ -125,10 +143,21 @@ def get_last_itinerary():
 def download_pdf():
     global last_itinerary
 
-    if not last_itinerary["pdf_path"]:
+    # Check if PDF path exists in memory
+    if not last_itinerary.get("pdf_path"):
         return jsonify({"error": "No PDF has been generated yet."}), 404
 
-    return send_file(last_itinerary["pdf_path"], as_attachment=True), 200
+    # Check if the file exists on disk
+    pdf_path = last_itinerary["pdf_path"]
+    try:
+        return send_file(pdf_path, as_attachment=True), 200
+    except FileNotFoundError:
+        return jsonify({"error": "PDF file not found on server."}), 404
+    except Exception as e:
+        print(f"Error sending PDF: {e}")
+        return jsonify({"error": "An unexpected error occurred while downloading the PDF."}), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
